@@ -91,7 +91,6 @@ void bf_change_val(ProgramState *state, const Direction dir) {
 }
 
 void bf_print_val(const ProgramState *state) {
-	// printf("%d\n", bf_deref_ptr(state));
 	putchar((char) bf_deref_ptr(state));
 }
 
@@ -130,8 +129,14 @@ int bf_exec_step(ProgramState *state) {
 			break;
 		case '[':
 			if (bf_deref_ptr(state) == 0) {
-				while (bf_current_sym(state) != ']') {
+				int starts = 1;
+				while (starts > 0) {
 					state->ins_ptr += 1;
+					if (bf_current_sym(state) == '[') {
+						starts += 1;
+					} else if (bf_current_sym(state) == ']') {
+						starts -= 1;
+					}
 				}
 			} else {
 				state->ins_ptr += 1;
@@ -139,21 +144,28 @@ int bf_exec_step(ProgramState *state) {
 			break;
 		case ']':
 			if (bf_deref_ptr(state) != 0) {
-				while (bf_current_sym(state) != '[') {
+				int starts = 1;
+				while (starts > 0) {
 					state->ins_ptr -= 1;
+					if (bf_current_sym(state) == ']') {
+						starts += 1;
+					} else if (bf_current_sym(state) == '[') {
+						starts -= 1;
+					}
 				}
 			} else {
 				state->ins_ptr += 1;
 			}
 			break;
 		default:
+			state->ins_ptr += 1;
 			break;
 	}
 
 	return 0;
 }
 
-void bf_exec(state) {
+void bf_exec(ProgramState *state) {
 	while (1) {
 		if (bf_exec_step(state)) {
 			return;
@@ -162,7 +174,25 @@ void bf_exec(state) {
 }
 
 int main(const int argc, const char **argv) {
-	const char *program = "++++++++++[>+++++++>++++++++++>+++>+<<<<-]>++.>+.+++++++..+++.>++.<<+++++++++++++++.>.+++.------.--------.>+.>.";
+	if (argc < 2) {
+		printf("not enough arguments\n");
+		exit(-1);
+	}
+
+	// read file to string
+	FILE *file = fopen(argv[1], "r");
+	if (file == NULL) {
+		perror("filerror");
+		exit(-1);
+	}
+	// get file size
+	fseek(file, 0, SEEK_END);
+	long filesize = ftell(file);
+	fseek(file, 0, SEEK_SET);
+	char *program = malloc(filesize + 1);
+	fread(program, 1, filesize, file);
+	fclose(file);
+
 	ProgramState *state = bf_init_program_state(BF_MEM_SIZE, program);
 
 	bf_exec(state);
